@@ -8,10 +8,22 @@ public class AimSystem : MonoBehaviour
 {
     [Header("Spine")]
     public SkeletonAnimation skeletonAnimation;
-    public string torsoBoneName = "body";
+    public string torsoBoneName = "body2";
+    public string torsoBone2Name = "body3";
+    public string leftArmBoneName = "armL";
+    public string leftArm2BoneName = "armL2";
+    private float torsoAimAngle;
 
     private Bone torsoBone;
+    private Bone torsoBone2;
+    private Bone leftArmBone;
+    private Bone leftArm2Bone;
     
+    private float defaultTorsoRotation;
+    private float defaultTorso2Rotation;
+    private float defaultLeftArmRotation;
+    private float defaultLeftArm2Rotation;
+
     [Header("References")]
     public Transform arrowSpawnPoint;
     public GameObject arrowPrefab;
@@ -35,9 +47,20 @@ public class AimSystem : MonoBehaviour
     {
         cam = Camera.main;
         HideDots();
-        
+
         if (skeletonAnimation != null)
+        {
             torsoBone = skeletonAnimation.Skeleton.FindBone(torsoBoneName);
+            torsoBone2 = skeletonAnimation.Skeleton.FindBone(torsoBone2Name);
+            leftArmBone = skeletonAnimation.Skeleton.FindBone(leftArmBoneName);
+            leftArm2Bone = skeletonAnimation.Skeleton.FindBone(leftArm2BoneName);
+            skeletonAnimation.UpdateLocal += ApplyTorsoRotation;
+            
+            if (torsoBone != null) defaultTorsoRotation = torsoBone.Rotation;
+            if (torsoBone2 != null) defaultTorso2Rotation = torsoBone2.Rotation;
+            if (leftArmBone != null) defaultLeftArmRotation = leftArmBone.Rotation;
+            if (leftArm2Bone != null) defaultLeftArm2Rotation = leftArm2Bone.Rotation;
+        }
     }
 
     void Update()
@@ -98,7 +121,7 @@ public class AimSystem : MonoBehaviour
             track.TimeScale = 1f;
             track.Complete += entry =>
             {
-                entry.TimeScale = 0f; // Pause at the end
+                entry.TimeScale = 0f;
             };
         }
 
@@ -132,7 +155,14 @@ public class AimSystem : MonoBehaviour
     {
         GameObject arrow = Instantiate(arrowPrefab, arrowSpawnPoint.position, Quaternion.identity);
         Rigidbody2D rb = arrow.GetComponent<Rigidbody2D>();
-        rb.velocity = direction * forceMultiplier;
+
+
+        Vector2 velocity = direction * forceMultiplier;
+        rb.velocity = velocity;
+
+        float angle = Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg;
+        arrow.transform.rotation = Quaternion.Euler(0f, 0f, angle);
+        
     }
 
     void UpdateTrajectory(Vector2 pullVector)
@@ -151,8 +181,24 @@ public class AimSystem : MonoBehaviour
         if (torsoBone == null) return;
 
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        torsoBone.Rotation = angle;
-        skeletonAnimation.Skeleton.UpdateWorldTransform();
+        torsoAimAngle = angle;
+    }
+    
+    void ApplyTorsoRotation(ISkeletonAnimation animated)
+    {
+        if (!isAiming)
+        {
+            if (torsoBone != null) torsoBone.Rotation = defaultTorsoRotation;
+            if (torsoBone2 != null) torsoBone2.Rotation = defaultTorso2Rotation;
+            if (leftArmBone != null) leftArmBone.Rotation = defaultLeftArmRotation;
+            if (leftArm2Bone != null) leftArm2Bone.Rotation = defaultLeftArm2Rotation;
+            return;
+        }
+
+        if (torsoBone != null) torsoBone.Rotation = torsoAimAngle;
+        if (torsoBone2 != null) torsoBone2.Rotation = torsoAimAngle;
+        if (leftArmBone != null) leftArmBone.Rotation = torsoAimAngle;
+        if (leftArm2Bone != null) leftArm2Bone.Rotation = torsoAimAngle;
     }
 
     void ShowDots()
